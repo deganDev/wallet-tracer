@@ -79,6 +79,7 @@ class TracerService:
 
         # limits
         total_edges_added = 0
+        contract_stats = {"checked": 0, "errors": 0}
 
         while q:
             item = q.popleft()
@@ -95,12 +96,19 @@ class TracerService:
             seen_addr_depth.add(key)
 
             # ensure node
-            self._ensure_node(graph, addr)
+            self._ensure_node(graph, addr, on_progress=on_progress, stats=contract_stats)
 
             # collect edges for this address
             new_edges: List[Edge] = []
-            new_edges.extend(self._eth_edges_for(addr, start_block, end_block))
-            new_edges.extend(self._erc20_edges_for(addr, start_block, end_block))
+            _emit("fetch", {"phase": "eth", "address": addr, "depth": depth})
+            eth_edges = self._eth_edges_for(addr, start_block, end_block)
+            _emit("fetch_done", {"phase": "eth", "address": addr, "count": len(eth_edges)})
+            new_edges.extend(eth_edges)
+
+            _emit("fetch", {"phase": "erc20", "address": addr, "depth": depth})
+            erc20_edges = self._erc20_edges_for(addr, start_block, end_block)
+            _emit("fetch_done", {"phase": "erc20", "address": addr, "count": len(erc20_edges)})
+            new_edges.extend(erc20_edges)
 
             # apply min_usd filter
             new_edges = self._apply_min_usd(new_edges, Decimal(str(cfg.min_usd)))
@@ -128,8 +136,8 @@ class TracerService:
             for e in new_edges:
                 graph.edges.append(e)
                 total_edges_added += 1
-                self._ensure_node(graph, e.from_address)
-                self._ensure_node(graph, e.to_address)
+                self._ensure_node(graph, e.from_address, on_progress=on_progress, stats=contract_stats)
+                self._ensure_node(graph, e.to_address, on_progress=on_progress, stats=contract_stats)
 
             # enqueue neighbors for next hop
             if depth < int(cfg.hops):
@@ -154,6 +162,8 @@ class TracerService:
                 "processed": processed,
                 "nodes": len(graph.nodes),
                 "edges": len(graph.edges),
+                "contract_checked": contract_stats["checked"],
+                "contract_errors": contract_stats["errors"],
             },
         )
         return graph
@@ -164,15 +174,16 @@ class TracerService:
 
     def _eth_edges_for(self, address: str, start_block: int, end_block: int) -> List[Edge]:
         edges: List[Edge] = []
-        eth_usd = self.price.get_eth_usd_price
+        
 
         for tx in self.chain.iter_normal_txs(address, start_block, end_block, sort="asc"):
             # ETH transfer means value > 0
             if tx.value_wei <= 0:
                 continue
-
+           
+            eth_usd = self.price.get_eth_usd_price(tx.timestamp)
             amount_eth = (Decimal(tx.value_wei) / WEI_PER_ETH)
-            usd_value = amount_eth * eth_usd(tx.timestamp)
+            usd_value = amount_eth * eth_usd
 
             edges.append(
                 Edge(
@@ -225,7 +236,13 @@ class TracerService:
     # Helpers
     # -------------------------
 
-    def _ensure_node(self, graph: Graph, address: str) -> None:
+    def _ensure_node(
+        self,
+        graph: Graph,
+        address: str,
+        on_progress: Optional[Callable[[str, Dict[str, object]], None]] = None,
+        stats: Optional[Dict[str, int]] = None,
+    ) -> None:
         addr = address.lower()
         if addr in graph.nodes:
             return
@@ -234,7 +251,16 @@ class TracerService:
         try:
             is_contract = bool(self.chain.is_contract(addr))
         except Exception:
+            if stats is not None:
+                stats["errors"] += 1
             is_contract = False
+        if stats is not None:
+            stats["checked"] += 1
+            if on_progress is not None and stats["checked"] % 25 == 0:
+                on_progress(
+                    "contract_progress",
+                    {"checked": stats["checked"], "errors": stats["errors"]},
+                )
 
         graph.nodes[addr] = Node(address=addr, is_contract=is_contract)
 

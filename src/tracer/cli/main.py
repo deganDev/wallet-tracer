@@ -34,6 +34,13 @@ def _make_progress_reporter(cfg: TraceConfig):
     last_print = 0.0
     is_tty = sys.stdout.isatty()
 
+    def _short_addr(addr: str) -> str:
+        if not addr:
+            return ""
+        if len(addr) <= 12:
+            return addr
+        return f"{addr[:6]}...{addr[-4:]}"
+
     def _ts() -> str:
         return dt.datetime.now().strftime("%H:%M:%S")
 
@@ -66,6 +73,27 @@ def _make_progress_reporter(cfg: TraceConfig):
                 f"processed {data['processed']} • "
                 f"edges {data['edges']}"
             )
+            _print_line(msg)
+            last_print = now
+            return
+        if event == "fetch":
+            phase = data.get("phase", "data").upper()
+            addr = _short_addr(str(data.get("address", "")))
+            msg = f"Fetching {phase} for {addr}..."
+            _print_line(msg)
+            last_print = now
+            return
+        if event == "fetch_done":
+            phase = data.get("phase", "data").upper()
+            count = data.get("count", 0)
+            msg = f"Fetched {phase}: {count} transfer(s)"
+            _print_line(msg)
+            last_print = now
+            return
+        if event == "contract_progress":
+            checked = data.get("checked", 0)
+            errors = data.get("errors", 0)
+            msg = f"Tagging contracts... {checked} checked (errors {errors})"
             _print_line(msg)
             last_print = now
             return

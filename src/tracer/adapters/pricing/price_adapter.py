@@ -9,7 +9,7 @@ from tracer.config import settings
 
 class PriceAdapter(PricePort):
 
-    def get_eth_usd_price(self) -> Decimal:
+    def get_eth_usd_price(self, timestamp: int) -> Decimal:
         return settings.ETH_USD_FALLBACK
 
     def get_token_usd_price(self, token_address: str, timestamp: int) -> Optional[Decimal]:
