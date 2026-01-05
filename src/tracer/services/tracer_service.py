@@ -4,7 +4,7 @@ import time
 from collections import deque
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Deque, Dict, Iterable, List, Optional, Set, Tuple
+from typing import Callable, Deque, Dict, Iterable, List, Optional, Set, Tuple
 
 from tracer.ports.chain_data_port import ChainDataPort
 from tracer.ports.price_port import PricePort
@@ -33,9 +33,39 @@ class TracerService:
         self.chain = chain
         self.price = price
 
-    def trace(self, cfg: TraceConfig) -> Graph:
-        now_ts = int(getattr(cfg, "now_ts", 0)) or int(time.time())
+    def trace(
+        self,
+        cfg: TraceConfig,
+        on_progress: Optional[Callable[[str, Dict[str, object]], None]] = None,
+    ) -> Graph:
+        now_ts_raw = getattr(cfg, "now_ts", 0)
+        if now_ts_raw is None:
+            now_ts = int(time.time())
+        else:
+            now_ts = int(now_ts_raw) or int(time.time())
         start_ts = now_ts - int(cfg.days) * 24 * 3600
+        processed = 0
+
+        def _emit(event: str, data: Dict[str, object]) -> None:
+            if on_progress is None:
+                return
+            try:
+                on_progress(event, data)
+            except Exception:
+                # Progress is best-effort; avoid breaking tracing on UI issues.
+                return
+
+        _emit(
+            "start",
+            {
+                "address": cfg.address,
+                "days": cfg.days,
+                "hops": cfg.hops,
+                "min_usd": cfg.min_usd,
+                "start_ts": start_ts,
+                "now_ts": now_ts,
+            },
+        )
 
         # Block window
         start_block = self.chain.get_block_number_by_time(start_ts, closest="after")
@@ -54,6 +84,7 @@ class TracerService:
             item = q.popleft()
             addr = item.address.lower()
             depth = item.depth
+            processed += 1
 
             if depth > int(cfg.hops):
                 continue
@@ -106,6 +137,25 @@ class TracerService:
                 for n in neighbors:
                     q.append(_hopItem(n, depth + 1))
 
+            _emit(
+                "visit",
+                {
+                    "address": addr,
+                    "depth": depth,
+                    "queue": len(q),
+                    "processed": processed,
+                    "edges": total_edges_added,
+                },
+            )
+
+        _emit(
+            "done",
+            {
+                "processed": processed,
+                "nodes": len(graph.nodes),
+                "edges": len(graph.edges),
+            },
+        )
         return graph
 
     # -------------------------

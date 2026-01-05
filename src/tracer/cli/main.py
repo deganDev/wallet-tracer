@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import os
+import sys
+import time
 from decimal import Decimal
 
 from tracer.core.models import TraceConfig
@@ -26,6 +29,61 @@ def build_arg_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _make_progress_reporter(cfg: TraceConfig):
+    start_time = time.time()
+    last_print = 0.0
+    is_tty = sys.stdout.isatty()
+
+    def _ts() -> str:
+        return dt.datetime.now().strftime("%H:%M:%S")
+
+    def _print_line(message: str) -> None:
+        if is_tty:
+            sys.stdout.write("\r" + message.ljust(88))
+            sys.stdout.flush()
+        else:
+            print(message)
+
+    def _clear_line() -> None:
+        if is_tty:
+            sys.stdout.write("\r" + (" " * 88) + "\r")
+            sys.stdout.flush()
+
+    def progress(event: str, data: dict) -> None:
+        nonlocal last_print
+        now = time.time()
+        if event == "start":
+            print(f"[{_ts()}] Tracing {cfg.address} • {cfg.days}d • {cfg.hops} hop(s)")
+            return
+        if event == "visit":
+            if not is_tty and data["processed"] % 100 != 0:
+                return
+            if is_tty and now - last_print < 0.2:
+                return
+            msg = (
+                f"Hop {data['depth']}/{cfg.hops} • "
+                f"queue {data['queue']} • "
+                f"processed {data['processed']} • "
+                f"edges {data['edges']}"
+            )
+            _print_line(msg)
+            last_print = now
+            return
+        if event == "done":
+            _clear_line()
+            elapsed = time.time() - start_time
+            print(
+                f"[{_ts()}] Done in {elapsed:.1f}s • "
+                f"{data['nodes']} nodes • {data['edges']} edges"
+            )
+            return
+        if event == "error":
+            _clear_line()
+            print(f"[{_ts()}] Error: {data.get('message', 'Unknown error')}", file=sys.stderr)
+
+    return progress
+
+
 def main() -> int:
     args = build_arg_parser().parse_args()
 
@@ -37,23 +95,33 @@ def main() -> int:
         max_edges_per_address=args.max_edges_per_address,
         max_total_edges=args.max_total_edges,
     )
+    progress = _make_progress_reporter(cfg)
 
     # Ports
     if args.use_static:
         chain = StaticChainAdapter()
+        adapter_label = "StaticChainAdapter (dev/testing)"
     else:
         # Etherscan key should come from env or settings file
         if not os.getenv("ETHERSCAN_API_KEY"):
-            raise SystemExit("Missing ETHERSCAN_API_KEY environment variable")
+            progress("error", {"message": "Missing ETHERSCAN_API_KEY environment variable"})
+            return 2
         chain = EtherscanChainAdapter()
+        adapter_label = "EtherscanChainAdapter"
 
     price = PriceAdapter()
 
     # Service
     svc = TracerService(chain=chain, price=price)
-    graph = svc.trace(cfg)
+    print(f"Adapter: {adapter_label}")
+    try:
+        graph = svc.trace(cfg, on_progress=progress)
+    except Exception as exc:
+        progress("error", {"message": f"{exc.__class__.__name__}: {exc}"})
+        return 1
 
     # Outputs
+    print("Writing outputs...")
     graph_path = write_graph_json(graph, args.out)
     summary_path = write_summary_md(graph, args.out)
 

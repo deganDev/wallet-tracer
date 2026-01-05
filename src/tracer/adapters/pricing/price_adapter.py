@@ -12,7 +12,7 @@ class PriceAdapter(PricePort):
     def get_eth_usd_price(self) -> Decimal:
         return settings.ETH_USD_FALLBACK
 
-    def get_token_usd_price(self, token_address: str) -> Optional[Decimal]:
+    def get_token_usd_price(self, token_address: str, timestamp: int) -> Optional[Decimal]:
         addr = token_address.lower()
 
         if addr in settings.FIXED_TOKEN_USD:
