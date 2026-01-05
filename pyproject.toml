@@ -1,0 +1,8 @@
+[project]
+name="wallet-tracer"
+version="1.0.0"
+dependencies = [
+    "dotenv>=0.9.9",
+    "requests>=2.32.5",
+    "uvicorn>=0.39.0",
+]

@@ -1,0 +1,78 @@
+# -------------------------
+# Python cache / compiled
+# -------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+
+# -------------------------
+# Virtual environments
+# -------------------------
+.venv/
+venv/
+ENV/
+env/
+
+# -------------------------
+# uv / pip / poetry
+# -------------------------
+.uv/
+pip-wheel-metadata/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# -------------------------
+# Lock files (OPTIONAL)
+# -------------------------
+# uv.lock        # uncomment ONLY if you don't want to commit lockfile
+# poetry.lock
+
+# -------------------------
+# Test / coverage
+# -------------------------
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# -------------------------
+# Logs & runtime files
+# -------------------------
+*.log
+*.pid
+
+# -------------------------
+# IDEs & editors
+# -------------------------
+.vscode/
+.idea/
+*.iml
+
+# -------------------------
+# OS junk
+# -------------------------
+.DS_Store
+Thumbs.db
+
+# -------------------------
+# Environment variables
+# -------------------------
+.env
+.env.*
+!.env.example
+
+# -------------------------
+# Jupyter / notebooks
+# -------------------------
+.ipynb_checkpoints/
+
+# -------------------------
+# Local data / temp
+# -------------------------
+data/
+tmp/
+.cache/
