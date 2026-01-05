@@ -18,14 +18,15 @@ from tracer.adapters.pricing.price_adapter import PriceAdapter
 
 def build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="tracer", description="Value-flow tracer (ETH + ERC20)")
-    p.add_argument("--seed", required=True, help="Seed address to trace")
+    p.add_argument("--address", required=True, help="Seed address to trace")
     p.add_argument("--days", type=int, default=30, help="Lookback window in days")
     p.add_argument("--hops", type=int, default=2, help="Number of hops")
-    p.add_argument("--min-usd", type=str, default="100", help="Filter transfers below this USD value")
+    p.add_argument("--min-usd", type=str, default="1000", help="Filter transfers below this USD value")
     p.add_argument("--out", default="out", help="Output folder")
     p.add_argument("--max-edges-per-address", type=int, default=0, help="Limit edges per address per hop (0=unlimited)")
     p.add_argument("--max-total-edges", type=int, default=0, help="Limit total edges (0=unlimited)")
     p.add_argument("--use-static", action="store_true", help="Use static adapter (dev/testing)")
+    p.add_argument("--ignore-unknown-price", default=True, action="store_true", help="Skip transfers where USD price cannot be determined")
     return p
 
 
@@ -116,12 +117,13 @@ def main() -> int:
     args = build_arg_parser().parse_args()
 
     cfg = TraceConfig(
-        address=args.seed,
+        address=args.address,
         days=args.days,
         hops=args.hops,
         min_usd=Decimal(args.min_usd),
         max_edges_per_address=args.max_edges_per_address,
         max_total_edges=args.max_total_edges,
+        ignore_unknown_price=args.ignore_unknown_price,
     )
     progress = _make_progress_reporter(cfg)
 
@@ -151,7 +153,7 @@ def main() -> int:
     # Outputs
     print("Writing outputs...")
     graph_path = write_graph_json(graph, args.out)
-    summary_path = write_summary_md(graph, args.out)
+    summary_path = write_summary_md(graph, args.out, seed_address=cfg.address)
 
     print(f"Wrote: {graph_path}")
     print(f"Wrote: {summary_path}")

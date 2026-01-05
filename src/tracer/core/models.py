@@ -23,6 +23,7 @@ class TraceConfig:
     now_ts: Optional[int] = None
     max_edges_per_address: int = 0    # 0 = unlimited
     max_total_edges: int = 0          # 0 = unlimited
+    ignore_unknown_price: bool = False
 
 
 

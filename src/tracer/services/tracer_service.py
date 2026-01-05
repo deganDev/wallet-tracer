@@ -106,7 +106,12 @@ class TracerService:
             new_edges.extend(eth_edges)
 
             _emit("fetch", {"phase": "erc20", "address": addr, "depth": depth})
-            erc20_edges = self._erc20_edges_for(addr, start_block, end_block)
+            erc20_edges = self._erc20_edges_for(
+                addr,
+                start_block,
+                end_block,
+                ignore_unknown_price=bool(getattr(cfg, "ignore_unknown_price", False)),
+            )
             _emit("fetch_done", {"phase": "erc20", "address": addr, "count": len(erc20_edges)})
             new_edges.extend(erc20_edges)
 
@@ -201,7 +206,13 @@ class TracerService:
 
         return edges
 
-    def _erc20_edges_for(self, address: str, start_block: int, end_block: int) -> List[Edge]:
+    def _erc20_edges_for(
+        self,
+        address: str,
+        start_block: int,
+        end_block: int,
+        ignore_unknown_price: bool = False,
+    ) -> List[Edge]:
         edges: List[Edge] = []
 
         for tx in self.chain.iter_erc20_transfers(address, start_block, end_block, sort="asc"):
@@ -214,6 +225,8 @@ class TracerService:
                 amount = amount / (Decimal(10) ** Decimal(decimals))
 
             token_price = self.price.get_token_usd_price(tx.token_address, tx.timestamp)
+            if ignore_unknown_price and token_price is None:
+                continue
             usd_value = (amount * token_price) if token_price is not None else None
 
             edges.append(
