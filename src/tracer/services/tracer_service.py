@@ -80,6 +80,7 @@ class TracerService:
         # limits
         total_edges_added = 0
         contract_stats = {"checked": 0, "errors": 0}
+        seen_edge_keys: Set[Tuple[str, str, str, str, Optional[str]]] = set()
 
         while q:
             item = q.popleft()
@@ -145,6 +146,10 @@ class TracerService:
 
             # add edges + nodes
             for e in new_edges:
+                edge_key = (e.tx_hash, e.from_address, e.to_address, e.asset_type, e.token_address)
+                if edge_key in seen_edge_keys:
+                    continue
+                seen_edge_keys.add(edge_key)
                 graph.edges.append(e)
                 total_edges_added += 1
                 self._ensure_node(

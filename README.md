@@ -52,7 +52,8 @@ python -m tracer.cli.main \
   --max-edges-per-address 0 \
   --max-total-edges 0 \
   --ignore-unknown-price \
-  --skip-contract-check \
+  --enable-contract-check \
+  --html \
   --out out
 ```
 
@@ -98,6 +99,13 @@ Not included (by design):
 - usd_value (best‑effort)
 
 `summary.md` is a short investigator‑friendly report.
+
+If you pass `--html`, the tracer also writes `out/index.html`. Open it with a local server:
+
+```bash
+cd out
+python -m http.server
+```
 
 ## Troubleshooting
 
