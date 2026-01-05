@@ -33,7 +33,7 @@ uv pip install -e .
 
 ```bash
 export ETHERSCAN_API_KEY=your_key_here
-python -m tracer.cli.main --seed 0xdadb0d80178819f2319190d340ce9a924f783711 --days 1 --hops 2
+python -m tracer.cli.main --address 0xdadb0d80178819f2319190d340ce9a924f783711 --days 1 --hops 2
 ```
 
 Outputs land in `./out` by default:
@@ -45,12 +45,14 @@ Outputs land in `./out` by default:
 
 ```bash
 python -m tracer.cli.main \
-  --seed <address> \
+  --address <address> \
   --days 30 \
   --hops 2 \
   --min-usd 1000 \
   --max-edges-per-address 0 \
   --max-total-edges 0 \
+  --ignore-unknown-price \
+  --skip-contract-check \
   --out out
 ```
 
@@ -59,7 +61,7 @@ python -m tracer.cli.main \
 If you want to run without Etherscan:
 
 ```bash
-python -m tracer.cli.main --seed <address> --use-static
+python -m tracer.cli.main --address <address> --use-static
 ```
 
 ## Notes
