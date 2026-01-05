@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
 import requests
 
@@ -9,6 +11,7 @@ from tracer.config.settings import (
     ETHERSCAN_TIMEOUT_SEC,
     ETHERSCAN_MAX_RETRIES,
     ETHERSCAN_PAGE_SIZE,
+    ETHERSCAN_CHECKPOINT_FILE,
 )
 
 from tracer.adapters.chain.rate_limiter import SimpleRateLimiter, backoff_sleep
@@ -32,6 +35,8 @@ class EtherscanChainAdapter(ChainDataPort):
 
         self._is_contract_cache: Dict[str, bool] = {}
         self._token_meta_cache: Dict[str, TokenMeta] = {}
+        self._checkpoint_path = Path(ETHERSCAN_CHECKPOINT_FILE)
+        self._checkpoints: Dict[str, int] = self._load_checkpoints()
 
     # ---------- internal ----------
 
@@ -74,6 +79,45 @@ class EtherscanChainAdapter(ChainDataPort):
         res = data.get("result")
         return res if isinstance(res, list) else []
 
+    def _load_checkpoints(self) -> Dict[str, int]:
+        try:
+            if not self._checkpoint_path.exists():
+                return {}
+            with self._checkpoint_path.open("r", encoding="utf-8") as f:
+                data = json.load(f)
+            if not isinstance(data, dict):
+                return {}
+            out: Dict[str, int] = {}
+            for k, v in data.items():
+                try:
+                    out[str(k)] = int(v)
+                except Exception:
+                    continue
+            return out
+        except Exception:
+            return {}
+
+    def _save_checkpoint(self, key: str, page: int) -> None:
+        try:
+            self._checkpoints[key] = int(page)
+            self._checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+            with self._checkpoint_path.open("w", encoding="utf-8") as f:
+                json.dump(self._checkpoints, f, indent=2)
+        except Exception:
+            # best-effort: checkpointing should not break tracing
+            return
+
+    @staticmethod
+    def _checkpoint_key(
+        action: str,
+        address: str,
+        start_block: int,
+        end_block: int,
+        token_address: Optional[str] = None,
+    ) -> str:
+        tok = (token_address or "").lower()
+        return f"{action}:{address.lower()}:{start_block}:{end_block}:{tok}"
+
     # ---------- port methods ----------
 
     def get_block_number_by_time(self, unix_ts: int, closest: str = "before") -> int:
@@ -96,7 +140,8 @@ class EtherscanChainAdapter(ChainDataPort):
         sort: str = "asc",
     ) -> Iterable[RawEthTransfer]:
 
-        page = 1
+        checkpoint_key = self._checkpoint_key("txlist", address, start_block, end_block)
+        page = self._checkpoints.get(checkpoint_key, 0) + 1
         while True:
             data = self._call({
                 "module": "account",
@@ -123,6 +168,7 @@ class EtherscanChainAdapter(ChainDataPort):
                     value_wei=int(r.get("value", 0)),
                 )
 
+            self._save_checkpoint(checkpoint_key, page)
             if len(rows) < self._page_size:
                 break
             page += 1
@@ -136,7 +182,14 @@ class EtherscanChainAdapter(ChainDataPort):
         token_address: Optional[str] = None,
     ) -> Iterable[RawErc20Transfer]:
 
-        page = 1
+        checkpoint_key = self._checkpoint_key(
+            "tokentx",
+            address,
+            start_block,
+            end_block,
+            token_address=token_address,
+        )
+        page = self._checkpoints.get(checkpoint_key, 0) + 1
         while True:
             params: Dict[str, Any] = {
                 "module": "account",
@@ -181,6 +234,7 @@ class EtherscanChainAdapter(ChainDataPort):
                     token_decimals=int(dec) if dec and str(dec).isdigit() else None,
                 )
 
+            self._save_checkpoint(checkpoint_key, page)
             if len(rows) < self._page_size:
                 break
             page += 1

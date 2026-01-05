@@ -96,7 +96,13 @@ class TracerService:
             seen_addr_depth.add(key)
 
             # ensure node
-            self._ensure_node(graph, addr, on_progress=on_progress, stats=contract_stats)
+            self._ensure_node(
+                graph,
+                addr,
+                on_progress=on_progress,
+                stats=contract_stats,
+                skip_contract_check=bool(getattr(cfg, "skip_contract_check", True)),
+            )
 
             # collect edges for this address
             new_edges: List[Edge] = []
@@ -141,8 +147,20 @@ class TracerService:
             for e in new_edges:
                 graph.edges.append(e)
                 total_edges_added += 1
-                self._ensure_node(graph, e.from_address, on_progress=on_progress, stats=contract_stats)
-                self._ensure_node(graph, e.to_address, on_progress=on_progress, stats=contract_stats)
+                self._ensure_node(
+                    graph,
+                    e.from_address,
+                    on_progress=on_progress,
+                    stats=contract_stats,
+                    skip_contract_check=bool(getattr(cfg, "skip_contract_check", True)),
+                )
+                self._ensure_node(
+                    graph,
+                    e.to_address,
+                    on_progress=on_progress,
+                    stats=contract_stats,
+                    skip_contract_check=bool(getattr(cfg, "skip_contract_check", True)),
+                )
 
             # enqueue neighbors for next hop
             if depth < int(cfg.hops):
@@ -255,25 +273,29 @@ class TracerService:
         address: str,
         on_progress: Optional[Callable[[str, Dict[str, object]], None]] = None,
         stats: Optional[Dict[str, int]] = None,
+        skip_contract_check: bool = True,
     ) -> None:
         addr = address.lower()
         if addr in graph.nodes:
             return
 
         # best-effort contract tagging (nice for investigators)
-        try:
-            is_contract = bool(self.chain.is_contract(addr))
-        except Exception:
-            if stats is not None:
-                stats["errors"] += 1
+        if skip_contract_check:
             is_contract = False
-        if stats is not None:
-            stats["checked"] += 1
-            if on_progress is not None and stats["checked"] % 25 == 0:
-                on_progress(
-                    "contract_progress",
-                    {"checked": stats["checked"], "errors": stats["errors"]},
-                )
+        else:
+            try:
+                is_contract = bool(self.chain.is_contract(addr))
+            except Exception:
+                if stats is not None:
+                    stats["errors"] += 1
+                is_contract = False
+            if stats is not None:
+                stats["checked"] += 1
+                if on_progress is not None and stats["checked"] % 25 == 0:
+                    on_progress(
+                        "contract_progress",
+                        {"checked": stats["checked"], "errors": stats["errors"]},
+                    )
 
         graph.nodes[addr] = Node(address=addr, is_contract=is_contract)
 

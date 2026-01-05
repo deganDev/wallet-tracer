@@ -27,6 +27,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--max-total-edges", type=int, default=0, help="Limit total edges (0=unlimited)")
     p.add_argument("--use-static", action="store_true", help="Use static adapter (dev/testing)")
     p.add_argument("--ignore-unknown-price", default=True, action="store_true", help="Skip transfers where USD price cannot be determined")
+    p.add_argument("--skip-contract-check", default=True, action="store_true", help="Skip contract checks (default)")
     return p
 
 
@@ -124,6 +125,7 @@ def main() -> int:
         max_edges_per_address=args.max_edges_per_address,
         max_total_edges=args.max_total_edges,
         ignore_unknown_price=args.ignore_unknown_price,
+        skip_contract_check=args.skip_contract_check,
     )
     progress = _make_progress_reporter(cfg)
 
