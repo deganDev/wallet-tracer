@@ -113,6 +113,14 @@ python -m http.server
 - **Looks stuck**: large wallets can take time; you’ll see live progress in the CLI.
 - **Rate limits**: reduce hop count or raise `ETHERSCAN_REQUESTS_PER_SEC` in settings.
 
+## Tests
+
+TracerService tests run against the `StaticChainAdapter` with deterministic data.
+
+```bash
+python -m unittest tests.test_tracer_service
+```
+
 ## Repo structure
 
 ```
