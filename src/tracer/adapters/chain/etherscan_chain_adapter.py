@@ -35,6 +35,8 @@ class EtherscanChainAdapter(ChainDataPort):
 
         self._is_contract_cache: Dict[str, bool] = {}
         self._token_meta_cache: Dict[str, TokenMeta] = {}
+        self._contract_source_cache: Dict[str, Dict[str, Any]] = {}
+        self._contract_abi_cache: Dict[str, str] = {}
         self._checkpoint_path = Path(ETHERSCAN_CHECKPOINT_FILE)
         self._checkpoints: Dict[str, int] = self._load_checkpoints()
 
@@ -256,9 +258,40 @@ class EtherscanChainAdapter(ChainDataPort):
         self._is_contract_cache[addr] = is_c
         return is_c
 
+   
     def get_token_meta(self, token_address: str) -> TokenMeta:
         ta = token_address.lower()
         return self._token_meta_cache.get(
             ta,
             TokenMeta(token_address=ta, symbol=None, decimals=None, name=None),
         )
+
+    def get_contract_source(self, address: str) -> Dict[str, Any]:
+        addr = address.lower()
+        if addr in self._contract_source_cache:
+            return self._contract_source_cache[addr]
+
+        data = self._call({
+            "module": "contract",
+            "action": "getsourcecode",
+            "address": addr,
+        })
+        rows = self._list_result(data)
+        out = rows[0] if rows else {}
+        self._contract_source_cache[addr] = out
+        return out
+
+    def get_contract_abi(self, address: str) -> str:
+        addr = address.lower()
+        if addr in self._contract_abi_cache:
+            return self._contract_abi_cache[addr]
+
+        data = self._call({
+            "module": "contract",
+            "action": "getabi",
+            "address": addr,
+        })
+        abi = data.get("result")
+        abi_str = abi if isinstance(abi, str) else ""
+        self._contract_abi_cache[addr] = abi_str
+        return abi_str

@@ -20,6 +20,16 @@ def graph_to_dict(g: Graph) -> Dict[str, Any]:
             }
             for n in g.nodes.values()
         ],
+        "tokens": [
+            {
+                "token_address": t.token_address,
+                "label": t.label.value,
+                "score": t.score,
+                "risk_flags": [f.value for f in t.risk_flags],
+                "signals": t.signals,
+            }
+            for t in g.tokens.values()
+        ],
         "edges": [
             {
                 "from": e.from_address,

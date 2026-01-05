@@ -122,10 +122,22 @@ def write_summary_md(
     lines.append("## Interpretation\n\n")
     lines.append(f"{interpretation()}\n\n")
 
+    lines.append("## Token Risk Summary\n\n")
+    if not graph.tokens:
+        lines.append("_No token risk data available._\n\n")
+    else:
+        label_counts = {}
+        for t in graph.tokens.values():
+            label_counts[t.label.value] = label_counts.get(t.label.value, 0) + 1
+        for label, count in sorted(label_counts.items()):
+            lines.append(f"- **{label}**: {count}\n")
+        lines.append("\n")
+
     lines.append("## Limitations / Next steps\n\n")
     lines.append("- Only ETH + ERC-20 transfers are included.\n")
     lines.append("- No internal tx tracing, approvals, or NFT activity.\n")
     lines.append("- USD values are best-effort and may be missing for unknown tokens.\n")
+    lines.append("- Token risk labels are best-effort and depend on external data sources.\n")
     lines.append("- Large wallets may require tighter limits or better caching.\n\n")
 
     lines.append("## Top Transfers (by USD value)\n\n")

@@ -51,5 +51,6 @@ class StaticChainAdapter(ChainDataPort):
         else:
             items.sort(key=lambda x: (x.block_number,x.timestamp))
         return items
+    
     def is_contract(self, address):
         return bool(self._contract.get(address.lower(), False))

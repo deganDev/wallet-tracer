@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Dict, List, Optional
 
+from tracer.core.enums import TokenRiskLabel, TokenRiskFlag
+
 
 
 # Configuration model
@@ -59,7 +61,17 @@ class Edge:
 
 
 @dataclass
+class TokenRisk:
+    token_address: str
+    label: TokenRiskLabel
+    score: int
+    risk_flags: List[TokenRiskFlag] = field(default_factory=list)
+    signals: Optional[Dict[str, object]] = None
+
+
+@dataclass
 class Graph:
 
     nodes: Dict[str, Node] = field(default_factory=dict)
     edges: List[Edge] = field(default_factory=list)
+    tokens: Dict[str, TokenRisk] = field(default_factory=dict)
