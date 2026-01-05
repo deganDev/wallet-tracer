@@ -144,3 +144,168 @@ def write_summary_md(
         f.writelines(lines)
 
     return str(out_path)
+
+
+def write_graph_html(graph: Graph, out_dir: str, filename: str = "index.html") -> str:
+    p = Path(out_dir)
+    p.mkdir(parents=True, exist_ok=True)
+
+    out_path = p / filename
+
+    html = """<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wallet Tracer</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --panel: #151824;
+      --text: #e6e8ef;
+      --muted: #9aa3b2;
+      --accent: #5bd1d7;
+      --edge-eth: #7bd389;
+      --edge-erc20: #f7b32b;
+    }
+    body {
+      margin: 0;
+      font-family: "SF Mono", "Menlo", "Consolas", monospace;
+      background: radial-gradient(circle at 20% 20%, #1b2130 0%, #0f1115 60%);
+      color: var(--text);
+    }
+    header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #23283a;
+      background: var(--panel);
+    }
+    header h1 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 0.5px;
+    }
+    header p {
+      margin: 6px 0 0 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    #wrap {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      height: calc(100vh - 64px);
+    }
+    #sidebar {
+      padding: 14px;
+      border-right: 1px solid #23283a;
+      background: var(--panel);
+    }
+    #sidebar h2 {
+      font-size: 13px;
+      margin: 10px 0 6px 0;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    #sidebar .stat {
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    #network {
+      width: 100%;
+      height: 100%;
+      min-height: 600px;
+      background: #0b0d12;
+    }
+    .legend {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .legend span {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      margin-right: 6px;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Wallet Tracer</h1>
+    <p>Interactive graph view of graph.json</p>
+  </header>
+  <div id="wrap">
+    <div id="sidebar">
+      <div class="stat" id="stats">Loading...</div>
+      <h2>Legend</h2>
+      <div class="legend"><span style="background: var(--edge-eth);"></span>ETH transfer</div>
+      <div class="legend"><span style="background: var(--edge-erc20);"></span>ERC-20 transfer</div>
+    </div>
+    <div id="network"></div>
+  </div>
+
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <script>
+    const short = (addr) => {
+      if (!addr) return "";
+      return addr.length > 14 ? addr.slice(0, 10) + "..." : addr;
+    };
+
+    fetch("./graph.json")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!window.vis || !window.vis.Network) {
+          document.getElementById("stats").textContent = "Graph library failed to load.";
+          return;
+        }
+        const nodes = data.nodes.map((n) => ({
+          id: n.address,
+          label: short(n.address),
+          title: n.address + (n.is_contract ? " (contract)" : ""),
+          shape: n.is_contract ? "box" : "dot",
+          color: n.is_contract ? "#8aa6ff" : "#5bd1d7",
+          size: 16,
+          font: { color: "#e6e8ef" },
+        }));
+
+        const edges = data.edges.map((e) => ({
+          from: e.from,
+          to: e.to,
+          arrows: "to",
+          color: e.asset_type === "ETH" ? "#7bd389" : "#f7b32b",
+          title: `${e.asset_type} ${e.symbol || ""} | ${e.amount} | ${e.usd_value || "unknown"} USD`,
+        }));
+
+        const container = document.getElementById("network");
+        const networkData = { nodes, edges };
+        const options = {
+          layout: { improvedLayout: true },
+          physics: { stabilization: { iterations: 200 } },
+          interaction: { hover: true },
+          nodes: { size: 12 },
+          edges: { smooth: false, width: 1.2, arrows: { to: { enabled: true, scaleFactor: 0.6 } } },
+        };
+        const network = new vis.Network(container, networkData, options);
+        network.once("stabilizationIterationsDone", () => {
+          network.fit({ animation: true });
+        });
+        setTimeout(() => {
+          network.fit({ animation: true });
+        }, 500);
+
+        const stats = document.getElementById("stats");
+        stats.textContent = `Nodes: ${nodes.length} • Edges: ${edges.length}`;
+      })
+      .catch((err) => {
+        document.getElementById("stats").textContent = "Failed to load graph.json";
+        console.error(err);
+      });
+  </script>
+</body>
+</html>
+"""
+
+    with out_path.open("w", encoding="utf-8") as f:
+        f.write(html)
+
+    return str(out_path)

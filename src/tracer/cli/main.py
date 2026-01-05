@@ -9,7 +9,7 @@ from decimal import Decimal
 
 from tracer.core.models import TraceConfig
 from tracer.services.tracer_service import TracerService
-from tracer.io.output_writer import write_graph_json, write_summary_md
+from tracer.io.output_writer import write_graph_json, write_summary_md, write_graph_html
 
 from tracer.adapters.chain.etherscan_chain_adapter import EtherscanChainAdapter
 from tracer.adapters.chain.static_chain_adapter import StaticChainAdapter 
@@ -28,6 +28,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--use-static", action="store_true", help="Use static adapter (dev/testing)")
     p.add_argument("--ignore-unknown-price", action="store_true", help="Skip transfers where USD price cannot be determined",)
     p.add_argument("--enable-contract-check", action="store_true", help="Enable contract checks (slower, uses eth_getCode)",)
+    p.add_argument("--html", action="store_true", help="Write a basic HTML visualization alongside graph.json",)
     return p
 
 
@@ -156,9 +157,14 @@ def main() -> int:
     print("Writing outputs...")
     graph_path = write_graph_json(graph, args.out)
     summary_path = write_summary_md(graph, args.out, seed_address=cfg.address)
+    html_path = None
+    if args.html:
+        html_path = write_graph_html(graph, args.out)
 
     print(f"Wrote: {graph_path}")
     print(f"Wrote: {summary_path}")
+    if html_path:
+        print(f"Wrote: {html_path}")
     return 0
 
 
