@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Optional
+from decimal import Decimal
+from typing import List, Optional
 
 
 @dataclass(frozen=True)
@@ -31,3 +32,29 @@ class TokenMeta:
     symbol: Optional[str]
     decimals: Optional[int]
     name: Optional[str] = None       
+
+
+@dataclass(frozen=True)
+class DexScreenerPair:
+    chain_id: str
+    dex_id: str
+    pair_address: str
+    base_token: str
+    quote_token: str
+    price_usd: Optional[Decimal]
+    liquidity_usd: Optional[Decimal]
+    volume_24h: Optional[Decimal]
+    fdv: Optional[Decimal]
+    market_cap: Optional[Decimal]
+    pair_created_at: Optional[int]
+
+
+@dataclass(frozen=True)
+class DexScreenerAnalysis:
+    pairs: List[DexScreenerPair]
+    total_liquidity_usd: Decimal
+    max_liquidity_usd: Decimal
+    pair_count: int
+    newest_pair_age_hours: Optional[Decimal]
+    oldest_pair_age_hours: Optional[Decimal]
+    flags: List[str]

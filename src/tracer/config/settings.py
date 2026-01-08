@@ -13,6 +13,15 @@ ETHERSCAN_MAX_RETRIES = 5
 ETHERSCAN_PAGE_SIZE = 1000
 ETHERSCAN_CHECKPOINT_FILE = ".cache/etherscan_checkpoints.json"
 
+# ---- DexScreener ----
+DEXSCREENER_BASE_URL = "https://api.dexscreener.com/latest/dex"
+DEXSCREENER_REQUESTS_PER_SEC = 1.0
+DEXSCREENER_TIMEOUT_SEC = 15
+DEXSCREENER_MAX_RETRIES = 3
+DEXSCREENER_MIN_LIQUIDITY_USD = Decimal("250000")
+DEXSCREENER_NEW_PAIR_HOURS = 24
+DEXSCREENER_CHAIN_ID = "ethereum"
+
 # ----- Pricing ------
 
 # ETH fallback / demo price
@@ -28,4 +37,6 @@ STABLECOIN_ADDRESSES = {
 # Fixed token prices for demo
 FIXED_TOKEN_USD = {
     "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599":Decimal("93000"),
+    "0xbb519BDa747465D8fD57a540595b391a0540e66c":Decimal("2"),
+    "0xed785Af60bEd688baa8990cD5c4166221599A441":Decimal("2")
 }

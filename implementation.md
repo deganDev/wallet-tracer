@@ -1,11 +1,12 @@
 # Scam Token Detection Implementation Plan
 
 This document describes the data sources, APIs, and step-by-step tasks to implement
-the full Ethereum scam-token detection policy described in the request.
+Ethereum scam-token detection using only DexScreener as the external provider.
 
 ## Goals
 - Detect and label token risks using the full label set and policies provided.
-- Combine static analysis, on-chain state, and simulation where possible.
+- Use DexScreener as the only external market/liquidity provider.
+- Combine static analysis and on-chain simulation where possible.
 - Emit token-level labels + risk score in outputs.
 
 ## Data Sources / APIs
@@ -40,7 +41,7 @@ Use cases:
 - Query owner/role storage, `owner()`/`getRoleMember`, etc.
 - Pull logs for liquidity remove events or mint events.
 
-### 3) DexScreener API (new)
+### 3) DexScreener API (only external provider)
 Purpose: liquidity, pairs, volume, and market metadata.
 Base: `https://api.dexscreener.com/latest/dex/`
 
@@ -49,36 +50,6 @@ Planned endpoints:
 
 Use cases:
 - Liquidity thin, pair age, single pair only, LP concentration heuristics.
-
-### 4) RugCheck API (new)
-Purpose: curated risk flags and holder/LP breakdowns when available.
-Base: `https://api.rugcheck.xyz/` (or provider-specific base)
-
-Planned endpoints (example):
-- `v1/tokens/{tokenAddress}` for risk report.
-
-Use cases:
-- LP lock status, top holders, mint/blacklist flags, known reports.
-
-### 5) GoPlus / Honeypot.is (optional, new)
-Purpose: honeypot and tax detection via simulation proxies.
-
-Planned endpoints (example):
-- GoPlus: `token_security` / `token_security/{chainId}?contract_addresses=...`
-- Honeypot.is: `v2/IsHoneypot?address=...&chain=eth`
-
-Use cases:
-- Honeypot sell blocked, buy/sell tax extremes, transfer restrictions.
-
-### 6) Known Scam Lists (optional)
-Purpose: curated blocklists.
-
-Potential sources:
-- Internal lists (CSV/JSON).
-- Public lists (if you have licensing/permission).
-
-Use cases:
-- `KNOWN_SCAM_REPORTS`.
 
 ## Data Model Changes
 
@@ -104,8 +75,6 @@ Adapters:
 - `CompositeTokenRiskAdapter` that merges signals from:
   - EtherscanTokenAnalyzer (source + ABI)
   - DexScreenerAdapter
-  - RugCheckAdapter
-  - Honeypot/GoPlusAdapter
   - RpcSimulatorAdapter
 
 ## Detection Pipeline (high-level)
@@ -151,10 +120,9 @@ Adapters:
    - Add `src/tracer/adapters/chain/rpc_chain_adapter.py` for JSON-RPC calls.
    - Add `src/tracer/adapters/risk/` adapters:
      - `dexscreener_adapter.py`
-     - `rugcheck_adapter.py`
-     - `honeypot_adapter.py` or `goplus_adapter.py`
      - `scamlist_adapter.py` (optional)
-   - Add `src/tracer/adapters/risk/composite_risk_adapter.py` to aggregate signals.
+   - Add `src/tracer/adapters/risk/composite_risk_adapter.py` to aggregate signals
+     from Etherscan + JSON-RPC + DexScreener.
 
 4) **Services**
    - Update `src/tracer/services/tracer_service.py` to resolve token risk
@@ -194,15 +162,14 @@ Adapters:
 
 6) **Liquidity + holders analyzer**
    - Pull pairs and liquidity from DexScreener.
-   - Pull LP lock/holder concentration from RugCheck.
-   - Emit liquidity and distribution flags.
+   - Emit liquidity and distribution flags supported by DexScreener data.
 
 7) **Honeypot + tax analyzer**
-   - Use Honeypot/GoPlus or RPC simulations to estimate buy/sell tax.
+   - Use RPC simulations to estimate buy/sell tax.
    - Emit honeypot and tax flags.
 
 8) **Known scam list integration**
-   - Load optional curated lists.
+   - Load optional curated lists (internal only, no external API).
    - Emit `KNOWN_SCAM_REPORTS`.
 
 9) **Scoring engine**

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Iterable, Optional
+from typing import Any, Dict, Iterable, Optional
 from tracer.core.dto import RawEthTransfer, RawErc20Transfer, TokenMeta
 
 class ChainDataPort(ABC):
@@ -49,4 +49,13 @@ class ChainDataPort(ABC):
     # --- check token metadata ---
     @abstractmethod
     def get_token_meta(self, token_address: str) -> TokenMeta:
+        raise NotImplementedError
+
+    # --- contract metadata ---
+    @abstractmethod
+    def get_contract_source(self, address: str) -> Dict[str, Any]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_contract_abi(self, address: str) -> str:
         raise NotImplementedError

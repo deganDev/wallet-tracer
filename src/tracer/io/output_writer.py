@@ -132,6 +132,14 @@ def write_summary_md(
         for label, count in sorted(label_counts.items()):
             lines.append(f"- **{label}**: {count}\n")
         lines.append("\n")
+        lines.append("## Token Risk Details\n\n")
+        for t in graph.tokens.values():
+            flags = ", ".join([f.value for f in t.risk_flags]) if t.risk_flags else "none"
+            lines.append(
+                f"- **{t.label.value}** | {t.token_address} | "
+                f"score {t.score} | flags: {flags}\n"
+            )
+        lines.append("\n")
 
     lines.append("## Limitations / Next steps\n\n")
     lines.append("- Only ETH + ERC-20 transfers are included.\n")

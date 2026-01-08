@@ -1,6 +1,6 @@
 from tracer.ports.chain_data_port import ChainDataPort
 from tracer.core.dto import RawEthTransfer, RawErc20Transfer, TokenMeta
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 
 class StaticChainAdapter(ChainDataPort):
     def __init__(self, 
@@ -54,3 +54,9 @@ class StaticChainAdapter(ChainDataPort):
     
     def is_contract(self, address):
         return bool(self._contract.get(address.lower(), False))
+
+    def get_contract_source(self, address: str) -> Dict[str, Any]:
+        return {}
+
+    def get_contract_abi(self, address: str) -> str:
+        return ""

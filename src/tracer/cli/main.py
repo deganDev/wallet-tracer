@@ -14,13 +14,14 @@ from tracer.io.output_writer import write_graph_json, write_summary_md, write_gr
 from tracer.adapters.chain.etherscan_chain_adapter import EtherscanChainAdapter
 from tracer.adapters.chain.static_chain_adapter import StaticChainAdapter 
 from tracer.adapters.pricing.price_adapter import PriceAdapter
+from tracer.adapters.risk.token_risk_adapter import TokenRiskAdapter
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="tracer", description="Value-flow tracer (ETH + ERC20)")
     p.add_argument("--address", required=True, help="Seed address to trace")
     p.add_argument("--days", type=int, default=30, help="Lookback window in days")
-    p.add_argument("--hops", type=int, default=2, help="Number of hops")
+    p.add_argument("--hops", type=int, default=1, help="Number of hops")
     p.add_argument("--min-usd", type=str, default="1000", help="Filter transfers below this USD value")
     p.add_argument("--out", default="out", help="Output folder")
     p.add_argument("--max-edges-per-address", type=int, default=0, help="Limit edges per address per hop (0=unlimited)")
@@ -145,7 +146,8 @@ def main() -> int:
     price = PriceAdapter()
 
     # Service
-    svc = TracerService(chain=chain, price=price)
+    risk = TokenRiskAdapter()
+    svc = TracerService(chain=chain, price=price, token_risk=risk)
     print(f"Adapter: {adapter_label}")
     try:
         graph = svc.trace(cfg, on_progress=progress)

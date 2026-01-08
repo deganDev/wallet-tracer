@@ -9,6 +9,7 @@ from typing import Callable, Deque, Dict, Iterable, List, Optional, Set, Tuple
 from tracer.ports.chain_data_port import ChainDataPort
 from tracer.ports.price_port import PricePort
 from tracer.core.models import Graph, Node, Edge, TraceConfig
+from tracer.ports.token_risk_port import TokenRiskPort
 
 
 WEI_PER_ETH = Decimal("1000000000000000000")
@@ -29,9 +30,15 @@ class TracerService:
     - Ignores: internal tx tracing, approvals, NFTs, contract decoding
     """
 
-    def __init__(self, chain: ChainDataPort, price: PricePort) -> None:
+    def __init__(
+        self,
+        chain: ChainDataPort,
+        price: PricePort,
+        token_risk: Optional[TokenRiskPort] = None,
+    ) -> None:
         self.chain = chain
         self.price = price
+        self.token_risk = token_risk
 
     def trace(
         self,
@@ -152,6 +159,20 @@ class TracerService:
                 seen_edge_keys.add(edge_key)
                 graph.edges.append(e)
                 total_edges_added += 1
+                if (
+                    self.token_risk is not None
+                    and e.asset_type == "ERC20"
+                    and e.token_address
+                    and e.token_address not in graph.tokens
+                ):
+                    try:
+                        graph.tokens[e.token_address] = self.token_risk.get_token_risk(
+                            e.token_address,
+                            e.timestamp,
+                        )
+                    except Exception:
+                        # risk signals are best-effort; do not break tracing
+                        pass
                 self._ensure_node(
                     graph,
                     e.from_address,
