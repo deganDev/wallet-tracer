@@ -10,6 +10,7 @@ from tracer.ports.chain_data_port import ChainDataPort
 from tracer.ports.price_port import PricePort
 from tracer.core.models import Graph, Node, Edge, TraceConfig
 from tracer.ports.token_risk_port import TokenRiskPort
+from tracer.ports.wallet_risk_port import WalletRiskPort
 
 
 WEI_PER_ETH = Decimal("1000000000000000000")
@@ -35,10 +36,12 @@ class TracerService:
         chain: ChainDataPort,
         price: PricePort,
         token_risk: Optional[TokenRiskPort] = None,
+        wallet_risk: Optional[WalletRiskPort] = None,
     ) -> None:
         self.chain = chain
         self.price = price
         self.token_risk = token_risk
+        self.wallet_risk = wallet_risk
 
     def trace(
         self,
@@ -204,6 +207,16 @@ class TracerService:
                     "edges": total_edges_added,
                 },
             )
+
+        if self.wallet_risk is not None:
+            for node in graph.nodes.values():
+                try:
+                    node.wallet_risk = self.wallet_risk.get_wallet_risk(
+                        node.address,
+                        graph,
+                    )
+                except Exception:
+                    continue
 
         _emit(
             "done",

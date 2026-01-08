@@ -17,6 +17,15 @@ def graph_to_dict(g: Graph) -> Dict[str, Any]:
             {
                 "address": n.address,
                 "is_contract": n.is_contract,
+                "wallet_risk": (
+                    {
+                        "label": n.wallet_risk.label,
+                        "score": n.wallet_risk.score,
+                        "signals": n.wallet_risk.signals,
+                    }
+                    if n.wallet_risk is not None
+                    else None
+                ),
             }
             for n in g.nodes.values()
         ],

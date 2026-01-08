@@ -37,10 +37,7 @@ class Node:
 
     address: str
     is_contract: bool = False
-
-    # Optional future fields
-    # label: Optional[str] = None
-    # risk_score: Optional[float] = None
+    wallet_risk: Optional["WalletRisk"] = None
 
 
 @dataclass
@@ -66,6 +63,14 @@ class TokenRisk:
     label: TokenRiskLabel
     score: int
     risk_flags: List[TokenRiskFlag] = field(default_factory=list)
+    signals: Optional[Dict[str, object]] = None
+
+
+@dataclass
+class WalletRisk:
+    address: str
+    label: str
+    score: float
     signals: Optional[Dict[str, object]] = None
 
 

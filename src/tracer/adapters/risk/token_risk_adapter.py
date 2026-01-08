@@ -6,17 +6,24 @@ from tracer.adapters.risk.dexscreener_adapter import DexScreenerAdapter
 from tracer.core.enums import TokenRiskFlag, TokenRiskLabel
 from tracer.core.errors import DataSourceError
 from tracer.core.models import TokenRisk
+from tracer.ml.token_scorer import TokenMLScorer
 from tracer.ports.token_risk_port import TokenRiskPort
 
 
 class TokenRiskAdapter(TokenRiskPort):
-    def __init__(self, dexscreener: Optional[DexScreenerAdapter] = None) -> None:
+    def __init__(
+        self,
+        dexscreener: Optional[DexScreenerAdapter] = None,
+        ml_scorer: Optional[TokenMLScorer] = None,
+    ) -> None:
         self._dexscreener = dexscreener or DexScreenerAdapter()
+        self._ml_scorer = ml_scorer or TokenMLScorer()
 
     def get_token_risk(self, token_address: str, timestamp: int) -> TokenRisk:
         signals = None
         flags = []
         score = 0
+        analysis = None
         try:
             analysis = self._dexscreener.analyze_token(token_address)
             flags = [TokenRiskFlag(f) for f in analysis.flags]
@@ -40,6 +47,13 @@ class TokenRiskAdapter(TokenRiskPort):
             }
         except DataSourceError as exc:
             signals = {"dexscreener_error": str(exc)}
+
+        if analysis is not None and self._ml_scorer is not None:
+            ml = self._ml_scorer.score(analysis)
+            if ml:
+                if signals is None:
+                    signals = {}
+                signals["ml"] = ml
 
         return TokenRisk(
             token_address=token_address.lower(),

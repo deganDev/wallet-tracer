@@ -57,12 +57,63 @@ python -m tracer.cli.main \
   --out out
 ```
 
+## ML training and evaluation
+
+Token dataset build + train + eval:
+
+```bash
+python -m tracer.cli.main \
+  --ml-token-labels data/tokens.csv \
+  --ml-token-dataset data/token_features.csv \
+  --ml-token-model models/token_risk.pkl \
+  --ml-token-eval
+```
+
+Wallet dataset build + train + eval:
+
+```bash
+python -m tracer.cli.main \
+  --ml-wallet-labels data/wallets.csv \
+  --ml-wallet-dataset data/wallet_features.csv \
+  --ml-wallet-model models/wallet_risk.pkl \
+  --ml-wallet-eval
+```
+
+Smoke tests:
+
+```bash
+python -m tracer.cli.main --ml-token-smoke 0xTOKEN --ml-token-model models/token_risk.pkl
+python -m tracer.cli.main --ml-wallet-smoke-graph out/graph.json --ml-wallet-smoke-address 0xWALLET --ml-wallet-model models/wallet_risk.pkl
+```
+
+Expected CSV formats:
+
+- Tokens: `token_address,label`
+- Wallets: `graph_path,address,label`
+
+Note: token dataset building calls DexScreener, so it needs network access.
+
 ### Static adapter (dev/testing)
 
 If you want to run without Etherscan:
 
 ```bash
 python -m tracer.cli.main --address <address> --use-static
+```
+
+### Auto-train token ML from a trace
+
+This uses heuristic token labels (SCAM_CONFIRMED/HIGH_RISK -> 1, else 0) and
+builds `out/tokens.csv`, `out/token_features.csv`, then trains a model.
+
+```bash
+python -m tracer.cli.main \
+  --address <address> \
+  --days 30 \
+  --hops 0 \
+  --min-usd 1 \
+  --out out \
+  --ml-auto-train
 ```
 
 ## Notes

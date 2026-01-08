@@ -40,3 +40,11 @@ FIXED_TOKEN_USD = {
     "0xbb519BDa747465D8fD57a540595b391a0540e66c":Decimal("2"),
     "0xed785Af60bEd688baa8990cD5c4166221599A441":Decimal("2")
 }
+
+# ----- ML Risk Scoring -----
+ML_TOKEN_MODEL_PATH = os.environ.get("ML_TOKEN_MODEL_PATH", "models/token_risk.pkl")
+ML_WALLET_MODEL_PATH = os.environ.get("ML_WALLET_MODEL_PATH", "models/wallet_risk.pkl")
+ML_TOKEN_HIGH_THRESHOLD = Decimal(os.environ.get("ML_TOKEN_HIGH_THRESHOLD", "0.7"))
+ML_TOKEN_MEDIUM_THRESHOLD = Decimal(os.environ.get("ML_TOKEN_MEDIUM_THRESHOLD", "0.5"))
+ML_WALLET_HIGH_THRESHOLD = Decimal(os.environ.get("ML_WALLET_HIGH_THRESHOLD", "0.7"))
+ML_WALLET_MEDIUM_THRESHOLD = Decimal(os.environ.get("ML_WALLET_MEDIUM_THRESHOLD", "0.5"))
